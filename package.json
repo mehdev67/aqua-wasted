@@ -1,0 +1,42 @@
+{
+  "name": "aqua-wasted",
+  "version": "0.1.0",
+  "description": "A Claude Code statusline that turns your token usage into the cooling water your AI session burns.",
+  "bin": {
+    "aqua-wasted": "bin/cli.js"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "statusline.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "card": "node bin/cli.js card",
+    "demo": "echo '{\"transcript_path\":\"\",\"context_window\":{\"current_usage\":{\"output_tokens\":9000,\"input_tokens\":60000}}}' | node statusline.js"
+  },
+  "keywords": [
+    "claude-code",
+    "statusline",
+    "tokens",
+    "water",
+    "sustainability",
+    "awareness",
+    "cli"
+  ],
+  "author": "mehdev67",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mehdev67/aqua-wasted.git"
+  },
+  "homepage": "https://github.com/mehdev67/aqua-wasted#readme",
+  "bugs": {
+    "url": "https://github.com/mehdev67/aqua-wasted/issues"
+  },
+  "dependencies": {}
+}

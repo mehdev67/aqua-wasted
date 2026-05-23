@@ -1,0 +1,9 @@
+{
+  "name": "aqua-wasted",
+  "version": "0.1.0",
+  "description": "A statusline that turns your Claude Code token usage into the cooling water your AI session burns.",
+  "author": "mehdev67",
+  "repository": "https://github.com/mehdev67/aqua-wasted",
+  "keywords": ["statusline", "tokens", "water", "sustainability", "awareness"],
+  "commands": ["./commands/aqua-wasted.md"]
+}

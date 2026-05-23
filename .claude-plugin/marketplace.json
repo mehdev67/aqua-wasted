@@ -1,0 +1,14 @@
+{
+  "name": "aqua-wasted",
+  "owner": {
+    "name": "mehdev67",
+    "url": "https://github.com/mehdev67"
+  },
+  "plugins": [
+    {
+      "name": "aqua-wasted",
+      "source": "./plugins/aqua-wasted",
+      "description": "A statusline that turns your Claude Code token usage into the cooling water your AI session burns."
+    }
+  ]
+}
