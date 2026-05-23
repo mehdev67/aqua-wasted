@@ -18,6 +18,29 @@ const CONFIG = path.join(INSTALL_DIR, 'config.json');
 const PKG_RUNTIME = path.join(__dirname, '..', 'statusline.js');
 const PROJECTS_DIR = path.join(CLAUDE_DIR, 'projects');
 
+// --- color helpers ----------------------------------------------------------
+
+const C = {
+  reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  cyan: '\x1b[36m',
+  blue: '\x1b[34m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+};
+const useColor = process.stdout.isTTY && process.env.NO_COLOR === undefined;
+function paint(s, codes) {
+  return useColor ? codes + s + C.reset : s;
+}
+function thirstLabel(frac) {
+  if (frac < 0.3) return 'a sip';
+  if (frac < 0.55) return 'thirsty';
+  if (frac < 0.8) return 'very thirsty';
+  return 'parched';
+}
+
 // --- small helpers ----------------------------------------------------------
 
 function readJson(file, fallback) {
@@ -123,9 +146,14 @@ function install(argv) {
   console.log('');
   console.log('  ' + core.renderSegment({ output: 9000, input: 60000, cacheCreation: 0, cacheRead: 0 }, cfg));
   console.log('');
-  console.log('aqua-wasted installed. Tier: ' + cfg.tier + ', unit: ' + cfg.unit + '.');
-  console.log('Run /statusline in Claude Code or start a new session to see it.');
-  console.log('Config: ' + CONFIG);
+  console.log(paint('  ✓ aqua-wasted installed', C.green + C.bold));
+  console.log('    tier     ' + cfg.tier);
+  console.log('    unit     ' + cfg.unit);
+  console.log('    chained  ' + (chain ? 'yes, your existing statusline is kept' : 'no'));
+  console.log('    config   ' + CONFIG);
+  console.log('');
+  console.log(paint('  Run /statusline or start a new session to see it.', C.dim));
+  console.log(paint('  💧 Every token sips cooling water. Run aqua-wasted tips for greener habits.', C.cyan));
 }
 
 function uninstall() {
@@ -153,7 +181,7 @@ function uninstall() {
   } catch (e) {
     // leave it; not fatal
   }
-  console.log('Done. Your settings backups (.bak-*) were kept.');
+  console.log(paint('✓ Done. Your settings backups (.bak-*) were kept.', C.green));
 }
 
 function status() {
@@ -202,30 +230,61 @@ function lifetimeTotals() {
 
 function card(argv) {
   const flags = parseFlags(argv);
-  const cfg = Object.assign({}, core.DEFAULT_CONFIG, readJson(CONFIG, {}) || {}, {
-    tier: flags.tier || (readJson(CONFIG, {}) || {}).tier || core.DEFAULT_CONFIG.tier,
+  const saved = readJson(CONFIG, {}) || {};
+  const cfg = Object.assign({}, core.DEFAULT_CONFIG, saved, {
+    tier: flags.tier || saved.tier || core.DEFAULT_CONFIG.tier,
     unit: flags.unit || 'auto',
   });
   const res = lifetimeTotals();
   const ml = core.computeWaterMl(res.totals, cfg.tier);
   const liters = ml / 1000;
   const bottles = Math.round(ml / core.BOTTLE_ML);
-  const showers = liters / 70; // a typical shower is roughly 70 liters
+  const showers = Math.round(liters / 70); // a typical shower is roughly 70 liters
+  const bathtubs = Math.round(liters / 250); // a full bathtub is roughly 250 liters
   const tokens =
     res.totals.input + res.totals.cacheCreation + res.totals.cacheRead + res.totals.output;
+  const nf = (n) => core.formatNumber(n, 0, cfg.locale);
 
-  const nf = (n, d) => core.formatNumber(n, d, cfg.locale);
-  const line = '  ' + '═'.repeat(44);
+  // A rough thirst gauge on a log scale: one liter is empty, a million is full.
+  const frac = Math.max(0, Math.min(1, Math.log10(Math.max(liters, 1)) / 6));
+  const width = 24;
+  const filled = Math.round(frac * width);
+  const meter = '▓'.repeat(filled) + '░'.repeat(width - filled);
+  const rule = '  ' + '─'.repeat(46);
+
   console.log('');
-  console.log('  \u{1F4A7} aqua-wasted lifetime report');
-  console.log(line);
-  console.log('  sessions counted : ' + nf(res.files, 0));
-  console.log('  tokens burned    : ' + nf(tokens, 0));
-  console.log('  water wasted     : ' + core.formatWater(ml, cfg.unit, cfg.locale));
-  console.log('  bottles          : ' + nf(bottles, 0) + ' (500 ml each)');
-  console.log('  showers          : ' + nf(showers, 1));
-  console.log(line);
-  console.log('  tier: ' + cfg.tier + '. Rough illustrative estimate. See the README.');
+  console.log('  ' + paint('💧  aqua-wasted', C.bold + C.cyan) + paint('  lifetime water report', C.dim));
+  console.log(rule);
+  console.log('  thirst meter   ' + paint(meter, C.blue) + '  ' + paint('(' + thirstLabel(frac) + ')', C.dim));
+  console.log('');
+  console.log('  sessions       ' + paint(nf(res.files), C.bold));
+  console.log('  tokens burned  ' + paint(nf(tokens), C.bold));
+  console.log('  water wasted   ' + paint(core.formatWater(ml, cfg.unit, cfg.locale), C.bold + C.cyan));
+  console.log('');
+  console.log('  🍶 ' + nf(bottles) + ' bottles    🚿 ' + nf(showers) + ' showers    🛁 ' + nf(bathtubs) + ' bathtubs');
+  console.log(rule);
+  console.log('  ' + paint('Fresh water is finite and AI is thirsty.', C.cyan));
+  console.log('  Reuse one session, pick smaller models for small jobs,');
+  console.log('  and let idle sessions rest. Run ' + paint('aqua-wasted tips', C.green) + ' for more.');
+  console.log('  ' + paint('arxiv.org/abs/2304.03271 · water.org', C.dim));
+  console.log('  ' + paint(cfg.tier + ' tier, a rough estimate. github.com/mehdev67/aqua-wasted', C.dim));
+  console.log('');
+}
+
+function tips() {
+  console.log('');
+  console.log('  ' + paint('💧 Sustainable vibecoding', C.bold + C.cyan));
+  console.log('  A few habits that cut the cooling water your AI use burns:');
+  console.log('');
+  console.log('    ' + paint('•', C.cyan) + ' Reuse one session so caching works, instead of restarting often');
+  console.log('    ' + paint('•', C.cyan) + ' Pick a smaller model for small or routine tasks');
+  console.log('    ' + paint('•', C.cyan) + ' Avoid regenerating the same output again and again');
+  console.log('    ' + paint('•', C.cyan) + ' Batch related questions together rather than one by one');
+  console.log('    ' + paint('•', C.cyan) + ' Close idle sessions so nothing keeps running for nothing');
+  console.log('');
+  console.log('  Every token is a sip of cooling water. Real sources worth reading:');
+  console.log('    ' + paint('Making AI Less Thirsty', C.green) + '   arxiv.org/abs/2304.03271');
+  console.log('    ' + paint('water.org', C.green) + '  ·  ' + paint('unwater.org', C.green));
   console.log('');
 }
 
@@ -237,6 +296,7 @@ function help() {
   console.log('  npx aqua-wasted uninstall');
   console.log('  npx aqua-wasted status');
   console.log('  npx aqua-wasted card [--unit=L]');
+  console.log('  npx aqua-wasted tips');
   console.log('');
   console.log('Install drops the statusline into ~/.claude/aqua-wasted/ and wires settings.json.');
   console.log('If you already have a statusLine, it is chained, not replaced.');
@@ -258,6 +318,9 @@ switch (cmd) {
     break;
   case 'card':
     card(rest);
+    break;
+  case 'tips':
+    tips();
     break;
   case 'help':
   case '--help':

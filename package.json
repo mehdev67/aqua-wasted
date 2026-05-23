@@ -1,6 +1,6 @@
 {
   "name": "aqua-wasted",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Claude Code statusline that turns your token usage into the cooling water your AI session burns.",
   "bin": {
     "aqua-wasted": "bin/cli.js"
@@ -13,7 +13,8 @@
     "bin",
     "statusline.js",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "card": "node bin/cli.js card",

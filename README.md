@@ -37,7 +37,7 @@ npx aqua-wasted uninstall
 
 This restores the statusline you had before, or removes ours if there was none. Your settings are backed up to `settings.json.bak-<timestamp>` on every install, just in case.
 
-## The lifetime brag card
+## The lifetime water report
 
 See the total water across every session you have ever run:
 
@@ -46,14 +46,17 @@ npx aqua-wasted card --unit=L
 ```
 
 ```
-  💧 aqua-wasted lifetime report
-  ════════════════════════════════════════════
-  sessions counted : 312
-  tokens burned    : 84 200 000
-  water wasted     : 2 526 L
-  bottles          : 5 052 (500 ml each)
-  showers          : 36.1
-  ════════════════════════════════════════════
+  💧  aqua-wasted  lifetime water report
+  ──────────────────────────────────────────────
+  thirst meter   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░  (parched)
+
+  sessions       3,830
+  tokens burned  9,035,044,404
+  water wasted   230,476 L
+
+  🍶 460,953 bottles    🚿 3,293 showers    🛁 922 bathtubs
+  ──────────────────────────────────────────────
+  Fresh water is finite and AI is thirsty.
 ```
 
 ## How the number works
@@ -75,6 +78,34 @@ Edit `~/.claude/aqua-wasted/config.json` any time to change tier, unit, label, e
 - One million tokens is about 30 liters, two full kitchen sinks.
 - A heavy coding week of around 2.5 million tokens is about 75 liters, one full shower.
 - Training GPT 3 once evaporated 700,000 liters of clean freshwater, before anyone typed a single prompt.
+
+## Why this exists
+
+AI feels weightless. You type, it answers, nothing visibly leaves the room. But every answer runs in a data center that pulls fresh water through cooling towers, and freshwater is one of the few resources we cannot manufacture more of. The cost is real, it is just invisible. aqua-wasted makes it visible, right where you already look a hundred times a day.
+
+The goal is not guilt. It is awareness, and a small nudge toward what you could call sustainable vibecoding: getting the same work done while drinking a little less of the planet.
+
+## Sustainable vibecoding
+
+A few habits genuinely cut the water your AI use burns:
+
+- Reuse one session so caching works, instead of restarting often.
+- Pick a smaller model for small or routine tasks.
+- Avoid regenerating the same output again and again.
+- Batch related questions together rather than one by one.
+- Close idle sessions so nothing keeps running for nothing.
+
+Print these any time:
+
+```bash
+npx aqua-wasted tips
+```
+
+We did not invent the science here, and we point you at the people who did rather than rephrasing them. Worth your time:
+
+- Making AI Less Thirsty, UC Riverside. https://arxiv.org/abs/2304.03271
+- water.org, on the global water crisis. https://water.org
+- UN Water. https://www.unwater.org
 
 ## Honest disclaimer
 
