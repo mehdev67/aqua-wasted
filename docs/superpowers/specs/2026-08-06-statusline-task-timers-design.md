@@ -58,9 +58,19 @@ Läser huvudtranskriptet en enda gång och returnerar tre saker:
 
 - **Turstart.** Tidsstämpeln på senaste raden med `type: "user"` som varken är
   `isSidechain` eller `isMeta`.
-- **Aktiv eller inte.** Sessionen jobbar om det finns minst ett `tool_use` utan
-  matchande `tool_result`. Det är exakt, till skillnad från att gissa på hur
-  länge det var tyst, som ger fel svar under ett långt Bash anrop.
+- **Aktiv eller inte.** Ett `tool_use` utan matchande `tool_result` betyder att ett
+  verktyg kör. Det räcker dock inte, vilket visade sig först på skarpt läge: mellan
+  ett verktygssvar och nästa anrop tänker modellen, och då är transkriptet helt
+  tyst i allt från några sekunder till flera minuter. Att gissa på tystnad ger fel
+  svar åt båda håll.
+
+  Slutet på en tur har ingen egen händelse, men det finns en exakt strukturell
+  signal. Ett assistentmeddelande som bara innehåller text betyder att Claude
+  lämnat tillbaka kontrollen. Ett assistentmeddelande som anropade ett verktyg
+  betyder att loopen fortfarande pågår, oavsett hur länge det varit tyst sedan.
+  Regeln blir alltså: aktiv om något verktyg hänger, eller om senaste
+  användarmeddelandet saknar svar, eller om senaste assistentmeddelandet anropade
+  ett verktyg. En spärr på tio minuter fångar transkript som kraschat mitt i en tur.
 - **Antal levande subagenter.** Antalet `Agent` anrop utan `tool_result`.
 
 Skannar sedan sessionens `subagents/` katalog, läser första 8 kB av varje fil för

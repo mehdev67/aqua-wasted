@@ -298,6 +298,28 @@ test('en avbruten tur lämnar ingen evig timer', () => {
   assert.strictEqual(s.turnStartMs, Date.parse('2026-08-06T10:05:00.000Z'));
 });
 
+test('skiljer på ett svar som lämnar över och ett som kallar verktyg', () => {
+  const d = tmpdir();
+  const base = { type: 'user', timestamp: '2026-08-06T10:00:00.000Z', message: { role: 'user', content: 'hej' } };
+
+  const mid = claude.scanTranscript(writeTranscript(d, [
+    base,
+    { type: 'assistant', timestamp: '2026-08-06T10:00:05.000Z', message: { content: [{ type: 'tool_use', id: 't1', name: 'Bash' }] } },
+    { type: 'user', timestamp: '2026-08-06T10:00:09.000Z', message: { content: [{ type: 'tool_result', tool_use_id: 't1' }] } },
+    { type: 'attachment', timestamp: '2026-08-06T10:00:09.000Z' },
+  ]));
+  assert.strictEqual(mid.lastKind, 'assistant');
+  assert.strictEqual(mid.lastHadToolUse, true, 'bilagor och verktygssvar får inte dölja att en loop pågår');
+
+  const end = claude.scanTranscript(writeTranscript(d, [
+    base,
+    { type: 'assistant', timestamp: '2026-08-06T10:00:05.000Z', message: { content: [{ type: 'tool_use', id: 't1', name: 'Bash' }] } },
+    { type: 'user', timestamp: '2026-08-06T10:00:09.000Z', message: { content: [{ type: 'tool_result', tool_use_id: 't1' }] } },
+    { type: 'assistant', timestamp: '2026-08-06T10:00:20.000Z', message: { content: [{ type: 'text', text: 'klart' }] } },
+  ]));
+  assert.strictEqual(end.lastHadToolUse, false, 'ett rent textsvar är slutet på turen');
+});
+
 test('sidokedjor räknas inte in i huvudsessionen', () => {
   const d = tmpdir();
   const p = writeTranscript(d, [
@@ -377,6 +399,61 @@ test('inline-läget lägger inte till en ny rad', () => {
   const out = timers.renderTimers({ transcript_path: '' }, { timers: true, timersLayout: 'inline' }, d, scanned);
   assert.ok(out.indexOf('\n') === -1, 'inline får aldrig bryta rad');
   assert.ok(out.indexOf('⏱') !== -1);
+});
+
+// Modellens tänktid mellan två verktygsanrop syns inte alls i transkriptet, så
+// tystnad får aldrig tolkas som att turen är slut.
+const THINKING = (now) => ({
+  totals: {},
+  turnStartMs: now - 120000,
+  lastActivityMs: now - 45000,
+  pendingTools: 0,
+  pendingAgents: 0,
+  lastKind: 'assistant',
+  lastHadToolUse: true,
+});
+const HANDED_BACK = (now) => Object.assign(THINKING(now), { lastHadToolUse: false, lastActivityMs: now - 30000 });
+
+test('tänktid mellan verktygsanrop räknas som pågående', () => {
+  const now = Date.now();
+  const m = timers.build({ transcript_path: '', session_id: 's1' }, {}, tmpdir(), THINKING(now), now);
+  assert.strictEqual(m.main.active, true, '45 s tystnad mitt i en verktygsloop är inte inaktivt');
+  assert.ok(Math.abs(m.main.elapsed - 120) < 1, 'timern ska räkna mot nu, inte mot senaste raden');
+});
+
+test('ett assistentsvar utan verktygsanrop avslutar turen', () => {
+  const now = Date.now();
+  const m = timers.build({ transcript_path: '', session_id: 's1' }, {}, tmpdir(), HANDED_BACK(now), now);
+  assert.strictEqual(m.main.active, false);
+  assert.ok(Math.abs(m.main.elapsed - 90) < 1, 'inaktiv timer ska frysa på turens längd');
+});
+
+test('ett nytt användarmeddelande utan svar räknas som pågående', () => {
+  const now = Date.now();
+  const s = Object.assign(HANDED_BACK(now), { lastKind: 'user', lastActivityMs: now - 3000 });
+  assert.strictEqual(timers.build({ transcript_path: '' }, {}, tmpdir(), s, now).main.active, true);
+});
+
+test('ett transkript som fastnat mitt i en tur räknar inte i evighet', () => {
+  const now = Date.now();
+  const s = Object.assign(THINKING(now), { lastActivityMs: now - 40 * 60000 });
+  assert.strictEqual(timers.build({ transcript_path: '' }, {}, tmpdir(), s, now).main.active, false);
+});
+
+test('en pågående tur får inte sparas som avslutad', () => {
+  const d = tmpdir();
+  const now = Date.now();
+  timers.build({ transcript_path: '', session_id: 's1', model: { id: 'x' } }, {}, d, THINKING(now), now);
+  assert.ok(!stats.load(d).samples['turn:x'], 'ingen mätning ska ha sparats mitt i turen');
+});
+
+test('två sessioner trampar inte på varandras turräkning', () => {
+  const d = tmpdir();
+  const now = Date.now();
+  const mk = (start) => Object.assign(HANDED_BACK(now), { turnStartMs: start, lastActivityMs: start + 60000 });
+  timers.build({ transcript_path: '', session_id: 'a', model: { id: 'x' } }, {}, d, mk(now - 300000), now);
+  timers.build({ transcript_path: '', session_id: 'b', model: { id: 'x' } }, {}, d, mk(now - 400000), now);
+  assert.strictEqual(stats.load(d).samples['turn:x'].length, 2, 'båda sessionerna ska ha bidragit');
 });
 
 test('en trasig konfiguration tystar timern i stället för att krascha', () => {
