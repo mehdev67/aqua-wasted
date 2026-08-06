@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const timers = require('./lib/timers');
 
 // ml of cooling water attributed per token, by scariness tier.
 const TIERS = {
@@ -35,6 +36,9 @@ const DEFAULT_CONFIG = {
   color: 'cyan',       // cyan | blue | red | yellow | green | magenta | false
   locale: 'en-US',
   chain: null,         // an existing statusLine command to run first, then append ours
+  timers: false,       // off by default: a second line is a surface you should opt into
+  timersLayout: 'line',// line | inline, in case a terminal will not render two lines
+  timersMaxChips: 3,
 };
 
 function loadConfig(dir) {
@@ -156,6 +160,13 @@ function runChain(chainCmd, stdinRaw) {
 }
 
 function main() {
+  // Claude Code can close the pipe before we finish writing, for instance when it
+  // gives up on a slow render. Without this the statusline dies on an unhandled
+  // EPIPE and the user gets a node stack trace where their status bar should be.
+  process.stdout.on('error', function (err) {
+    if (err && err.code === 'EPIPE') process.exit(0);
+  });
+
   let stdinRaw = '';
   try {
     stdinRaw = fs.readFileSync(0, 'utf8');
@@ -171,13 +182,17 @@ function main() {
 
   const cfg = loadConfig(__dirname);
 
-  let totals = sumTokensFromTranscript(payload.transcript_path);
+  // One pass over the transcript serves both the water figure and the timers.
+  // Reading a multi megabyte transcript twice per render is a cost we cannot pay.
+  const scanned = timers.scan(payload);
+  let totals = scanned.totals;
   const sum = totals.input + totals.cacheCreation + totals.cacheRead + totals.output;
   if (sum === 0) totals = tokensFromPayload(payload);
 
   const base = runChain(cfg.chain, stdinRaw);
   const segment = renderSegment(totals, cfg);
-  process.stdout.write(base ? base + '  ' + segment : segment);
+  const head = base ? base + '  ' + segment : segment;
+  process.stdout.write(head + timers.renderTimers(payload, cfg, __dirname, scanned));
 }
 
 module.exports = {

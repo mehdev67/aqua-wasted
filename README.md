@@ -71,6 +71,26 @@ Token usage is summed straight from your Claude Code session transcript, so it r
 
 Edit `~/.claude/aqua-wasted/config.json` any time to change tier, unit, label, emoji, or color.
 
+## Timers and agent chips
+
+Off by default. Set `"timers": true` in `~/.claude/aqua-wasted/config.json` and a second line appears under the water figure:
+
+```
+⏱ 4m18s ~2m kvar    ◆ Explore · Sonnet 5  2m14s ~2m    ◆ general · Opus 5  9m02s drar över    ◇ codex · 5.5  0m54s
+```
+
+The main timer tracks the current turn in pale mint. Each live agent gets its own chip in a violet gradient, labelled with the model actually doing the work. A filled diamond is a Claude subagent, read from its own transcript under `<session>/subagents/`. A hollow diamond is an external CLI run such as Codex or Kimi, read from the process list, where these tools carry their model on the command line.
+
+Claude Code never estimates completion, so tail times are not read anywhere, they are computed. Each forecast is the median of your own past runs for that same agent type and model, seeded from the transcripts already on your disk. Three rules keep it honest: no forecast until three runs exist, every forecast is marked with a tilde, and once the median is passed the chip says it is running long instead of counting down to a false zero.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `timers` | `false` | turn the whole line on |
+| `timersLayout` | `"line"` | `"inline"` appends to the water line instead, for terminals that will not draw two lines |
+| `timersMaxChips` | `3` | agents beyond this collapse into a `+N` counter |
+
+Gradients need a truecolor terminal. Without one the chips fall back to 256 colors, and without that to plain magenta.
+
 ## True comparisons you can quote
 
 - A 100 word AI email pours out about a bottle of water (519 ml), straight from the UC Riverside and Washington Post reporting.
